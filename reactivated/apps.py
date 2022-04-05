@@ -18,6 +18,7 @@ from .serialization.registry import (
     template_registry,
     type_registry,
     value_registry,
+    rpc_registry,
 )
 
 logger = logging.getLogger("django.server")
@@ -123,6 +124,7 @@ def get_schema() -> str:
         "templates": get_templates(),
         "types": get_types_schema(),
         "values": get_values(),
+        "rpc": rpc_registry,
     }
     return json.dumps(schema, indent=4)
 

@@ -17,6 +17,7 @@ global_types: Dict[str, Tuple[Any]] = {}
 template_registry: Dict[str, Tuple[Any]] = {}
 value_registry: Dict[str, Any] = {}
 definitions_registry: Dict[Any, Any] = {}
+rpc_registry: Dict[str, Any] = {}
 
 PROXIES = utils.ClassLookupDict({})
 
