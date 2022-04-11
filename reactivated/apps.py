@@ -15,10 +15,10 @@ from .serialization.registry import (
     definitions_registry,
     global_types,
     interface_registry,
+    rpc_registry,
     template_registry,
     type_registry,
     value_registry,
-    rpc_registry,
 )
 
 logger = logging.getLogger("django.server")
