@@ -5,6 +5,8 @@ from typing import Any
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
+DIST_ROOT = "static/dist/"
+
 
 class Command(BaseCommand):
     help = "Generates all types and other client assets"
@@ -66,14 +68,13 @@ class Command(BaseCommand):
             for bundle in entry_points:
                 terser_process = subprocess.Popen(
                     [
-                        "yarn",
-                        "terser",
-                        f"static/dist/{bundle}.js",
-                        f"--source-map=content=static/dist/{bundle}.js.map",
+                        "node_modules/.bin/terser",
+                        f"{DIST_ROOT}{bundle}.js",
+                        f"--source-map=content='{DIST_ROOT}{bundle}.js.map'",
                         "--compress",
                         "--mangle",
                         "-o",
-                        f"static/dist/{bundle}.js",
+                        f"{DIST_ROOT}{bundle}.js",
                     ],
                     stdout=subprocess.PIPE,
                     env=build_env,
@@ -91,7 +92,7 @@ class Command(BaseCommand):
                     "files",
                     os.environ["TAG_VERSION"],
                     "upload-sourcemaps",
-                    "static/dist/",
+                    DIST_ROOT,
                     "--url-prefix",
                     "~/static/dist",
                 ],

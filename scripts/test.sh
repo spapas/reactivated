@@ -14,7 +14,7 @@ elif [ "$GITHUB_EVENT_NAME" = "push" ]; then
     TARGET_BRANCH=$(git rev-parse HEAD~1)
     echo "Push event: running against previous commit $TARGET_BRANCH"
 else
-    TARGET_BRANCH="origin/master"
+    TARGET_BRANCH="origin/main"
     echo "Local run: running against default branch $TARGET_BRANCH"
 fi
 
@@ -66,7 +66,7 @@ cd $PROJECT_ROOT
 if [[ $SERVER -eq 1 ]]; then
     capture_stdout_and_stderr_if_successful pytest
     capture_stdout_and_stderr_if_successful flake8 .
-    capture_stdout_and_stderr_if_successful isort --recursive -c .
+    capture_stdout_and_stderr_if_successful isort -c .
     capture_stdout_and_stderr_if_successful black . --check
     capture_stdout_and_stderr_if_successful mypy --no-incremental .
 fi

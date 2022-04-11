@@ -28,8 +28,8 @@ export const renderPage = ({
 }) =>
     `
 <!DOCTYPE html>
-<html>
-    <head ${helmet.htmlAttributes.toString()}>
+<html ${helmet.htmlAttributes.toString()}>
+    <head>
         <script>
             // These go first because scripts below need them.
             // WARNING: See the following for security issues around embedding JSON in HTML:
@@ -70,12 +70,11 @@ type Result =
           error: any;
       };
 
-export const render = (
-    {context, props}: {context: any; props: any},
-    Provider: React.ComponentType<any>,
-    Template: React.ComponentType<any>,
-): Result => {
+export const render = ({context, props}: {context: any; props: any}): Result => {
+    const {Provider, getTemplate} = require("../../node_modules/_reactivated");
+
     try {
+        const Template = getTemplate(context);
         const helmetContext = {} as FilledContext;
 
         const rendered = ReactDOMServer.renderToString(
@@ -105,17 +104,13 @@ export const render = (
 export const simpleRender = () => {
     const input = fs.readFileSync(0);
     const {context, props} = JSON.parse(input.toString("utf8"));
-    const {Provider, getTemplate} = require("../../client/generated");
-    const Template = getTemplate(context);
 
-    process.stdout.write(JSON.stringify(render({context, props}, Provider, Template)));
+    process.stdout.write(JSON.stringify(render({context, props})));
 };
 
 export const serverRender = (body: Buffer) => {
     const {context, props} = JSON.parse(body.toString("utf8"));
-    const {Provider, getTemplate} = require("../../client/generated");
-    const Template = getTemplate(context);
-    return render({context, props}, Provider, Template);
+    return render({context, props});
 };
 
 const OK_RESPONSE = 200;
@@ -124,7 +119,8 @@ const ERROR_REPONSE = 500;
 
 // Relative path to keep it under 100 characters.
 // See: https://unix.stackexchange.com/questions/367008/why-is-socket-path-length-limited-to-a-hundred-chars
-export const SOCKET_PATH = `node_modules/.bin/reactivated.sock`;
+export const SOCKET_PATH =
+    process.env.REACTIVATED_SOCKET ?? `node_modules/_reactivated/reactivated.sock`;
 
 export const server = http.createServer((req, res) => {
     let body = Buffer.from("");

@@ -12,7 +12,6 @@ from typing import (
     Optional,
     Protocol,
     Sequence,
-    Tuple,
     Type,
     Union,
     get_type_hints,
@@ -21,17 +20,27 @@ from typing import (
 from django import forms as django_forms
 from django.conf import settings
 from django.db import models
+from django.db.models.fields.reverse_related import ForeignObjectRel
 from django.utils.module_loading import import_string
 
 from reactivated import fields, stubs
 from reactivated.forms import EnumChoiceField
 from reactivated.models import ComputedRelation
+from reactivated.types import Optgroup
 
 from .registry import JSON, PROXIES, Definitions, Schema, Thing, register
 
 FormError = List[str]
 
 FormErrors = Dict[str, FormError]
+
+
+# TODO: can we handle other field types somewhat like this and widgets?
+@register(models.BigAutoField)
+class BigAutoField:
+    @classmethod
+    def get_json_schema(Type, instance, definitions):  # type: ignore[no-untyped-def]
+        return field_descriptor_schema(models.IntegerField(), definitions)
 
 
 class ComputedField(NamedTuple):
@@ -89,32 +98,6 @@ class ForeignKeyType:
         )
 
 
-class OptgroupMember(NamedTuple):
-    name: str
-    value: Union[str, int, bool, None]
-    label: str
-    selected: bool
-
-
-Optgroup = Tuple[None, Tuple[OptgroupMember], int]
-
-"""
-type Optgroup = [
-    null,
-    [
-        {
-            name: string;
-            // value: string|number|boolean|null;
-            value: string | number | boolean | null;
-            label: string;
-            selected: boolean;
-        },
-    ],
-    number,
-];
-"""
-
-
 class BaseIntersectionHolder:
     types: List[Type[NamedTuple]] = []
 
@@ -127,7 +110,12 @@ class BaseIntersectionHolder:
             schema, definitions = create_schema(context_processor, definitions)
             schemas.append(schema)
 
-        return Thing(schema={"allOf": schemas,}, definitions=definitions,)
+        return Thing(
+            schema={
+                "allOf": schemas,
+            },
+            definitions=definitions,
+        )
 
 
 class Intersection:
@@ -144,7 +132,7 @@ class Intersection:
 class FieldType(NamedTuple):
     name: str
     label: str
-    help_text: str
+    help_text: Optional[str]
 
     # TODO: way to mark this as a custom property we define. This is just so it is
     # marked as required.
@@ -175,7 +163,9 @@ class FieldType(NamedTuple):
             )
             extra = {
                 "type": "object",
-                "properties": {"enum": choice_schema,},
+                "properties": {
+                    "enum": choice_schema,
+                },
                 "required": ["enum"],
                 "additionalProperties": False,
             }
@@ -187,7 +177,9 @@ class FieldType(NamedTuple):
                     base_schema,
                     {
                         "type": "object",
-                        "properties": {"widget": widget_schema,},
+                        "properties": {
+                            "widget": widget_schema,
+                        },
                         "additionalProperties": False,
                         "required": ["widget"],
                     },
@@ -210,6 +202,8 @@ class FieldType(NamedTuple):
         field.widget = field.field.widget  # type: ignore[attr-defined]
 
         serialized = serialize(value, schema, suppress_custom_serializer=True)
+        help_text = serialized.get("help_text")
+        serialized["help_text"] = help_text if help_text != "" else None
         return serialized
 
 
@@ -290,7 +284,10 @@ class FormType(NamedTuple):
             error_properties[field_name] = error_definition
 
         iterator = (
-            {"type": "array", "items": {"enum": required, "type": "string"},}
+            {
+                "type": "array",
+                "items": {"enum": required, "type": "string"},
+            }
             if len(required) > 0
             else {"type": "array", "items": []}
         )
@@ -320,6 +317,7 @@ class FormType(NamedTuple):
                     },
                     "prefix": {"type": "string"},
                     "iterator": iterator,
+                    "hidden_fields": iterator,
                 },
                 "serializer": "reactivated.serialization.FormType",
                 "additionalProperties": False,
@@ -336,6 +334,10 @@ class FormType(NamedTuple):
         Type: Type["FormType"], value: django_forms.BaseForm, schema: Thing
     ) -> JSON:
         form = value
+        context = form.get_context()  # type: ignore[attr-defined]
+
+        hidden_fields = {field.name: field for field in context["hidden_fields"]}
+        visible_fields = {field.name: field for field, _ in context["fields"]}
 
         # TODO: hackey way to make bound fields work.
         # This creates a property that is then accessible by our serializer
@@ -343,16 +345,17 @@ class FormType(NamedTuple):
         # proper way to do this is to make fields a mapped type of unbound
         # fields, and then unbound field a type that has a .field property for
         # the bound field.
-        value.fields = {
-            field_name: form[field_name] for field_name in form.fields.keys()
-        }
+        value.fields = {**hidden_fields, **visible_fields}
 
         serialized = serialize(value, schema, suppress_custom_serializer=True)
         serialized[
             "name"
         ] = f"{value.__class__.__module__}.{value.__class__.__qualname__}"
         serialized["prefix"] = form.prefix or ""
-        serialized["iterator"] = list(value.fields.keys())
+        serialized["iterator"] = list(hidden_fields.keys()) + list(
+            visible_fields.keys()
+        )
+        serialized["hidden_fields"] = list(hidden_fields.keys())
         serialized["errors"] = form.errors or None
         return serialized
 
@@ -511,13 +514,11 @@ def field_descriptor_schema(
     }
 
     try:
-        from django_extensions.db import (  # type: ignore[import]
-            fields as django_extension_fields,
-        )
+        import django_extensions.db.fields  # type: ignore[import]
 
         mapping = {
             **mapping,
-            django_extension_fields.ShortUUIDField: lambda field: str,
+            django_extensions.db.fields.ShortUUIDField: lambda field: str,
         }
     except ImportError:
         pass
@@ -781,6 +782,10 @@ def create_schema(Type: Any, definitions: Definitions) -> Thing:
         return Thing(schema={}, definitions=definitions)
     elif callable(getattr(Type, "get_json_schema", None)):
         return Type.get_json_schema(definitions)  # type: ignore[no-any-return]
+    elif isinstance(Type, ForeignObjectRel):
+        assert (
+            False
+        ), f"You cannot Pick reverse relationships. Specify which fields from {Type.name} you want, such as {Type.name}.example_field"
     elif issubclass(Type, tuple) and callable(getattr(Type, "_asdict", None)):
         return named_tuple_schema(Type, definitions)
     elif type(Type) == stubs._TypedDictMeta:
@@ -909,7 +914,10 @@ def serialize(
     # remains a higher-order construct. Same for $ref.
     if serializer_path is not None and suppress_custom_serializer is False:
         serializer = import_string(serializer_path).get_serialized_value
-        return serializer(value, schema,)
+        return serializer(
+            value,
+            schema,
+        )
     elif "$ref" in schema.schema:
         dereferenced_schema = schema.definitions[
             schema.schema["$ref"].replace("#/definitions/", "")
@@ -938,4 +946,7 @@ def serialize(
     # Should this be an option?
     serializer = SERIALIZERS[schema.schema.get("type", "any")]
 
-    return serializer(value, schema,)
+    return serializer(
+        value,
+        schema,
+    )

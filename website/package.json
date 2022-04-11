@@ -1,14 +1,14 @@
 {
-    "scripts": {
-        "examples": "docusaurus-examples",
-        "start": "docusaurus-start",
-        "build": "docusaurus-build",
-        "publish-gh-pages": "docusaurus-publish",
-        "write-translations": "docusaurus-write-translations",
-        "version": "docusaurus-version",
-        "rename-version": "docusaurus-rename-version"
-    },
-    "devDependencies": {
-        "docusaurus": "^1.3.2"
+    "name": "reactivated.io",
+    "version": "1.0.0",
+    "main": "index.js",
+    "author": "Silvio J. Gutierrez <silviogutierrez@gmail.com>",
+    "license": "MIT",
+    "dependencies": {
+        "@types/react-syntax-highlighter": "^13.5.2",
+        "outdent": "^0.8.0",
+        "react-markdown": "^8.0.0",
+        "react-syntax-highlighter": "^15.4.5",
+        "reactivated": "^0.23.0"
     }
 }

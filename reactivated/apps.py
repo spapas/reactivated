@@ -1,20 +1,20 @@
-import atexit
 import importlib
 import json
 import logging
 import os
 import subprocess
-import sys
 from typing import Any, Dict, NamedTuple, Tuple
 
 from django.apps import AppConfig
 from django.conf import settings
+from django.utils.autoreload import file_changed  # type: ignore[attr-defined]
 
-from . import extract_views_from_urlpatterns
+from . import extract_views_from_urlpatterns, types
 from .serialization import create_schema
 from .serialization.registry import (
     definitions_registry,
     global_types,
+    interface_registry,
     template_registry,
     type_registry,
     value_registry,
@@ -22,6 +22,8 @@ from .serialization.registry import (
 )
 
 logger = logging.getLogger("django.server")
+
+GENERATED_DIRECTORY = f"{settings.BASE_DIR}/node_modules/_reactivated"
 
 
 def get_urls_schema() -> Dict[str, Any]:
@@ -40,7 +42,7 @@ def get_urls_schema() -> Dict[str, Any]:
     }
 
     urls = extract_views_from_urlpatterns(urlpatterns)  # type: ignore[no-untyped-call]
-    reverse = {}
+    reverse: types.URLSchema = {}
 
     for _, regex, name, pattern in urls:
         if not isinstance(pattern, RoutePattern):
@@ -57,7 +59,7 @@ def get_urls_schema() -> Dict[str, Any]:
 
 
 def get_types_schema() -> Any:
-    """ The package json-schema-to-typescript does expose a way to
+    """The package json-schema-to-typescript does expose a way to
     automatically export any interface it sees. However, this can bloat our
     generated files.
 
@@ -114,6 +116,10 @@ def get_templates() -> Dict[str, Tuple[Any]]:
     return template_registry
 
 
+def get_interfaces() -> Dict[str, Tuple[Any]]:
+    return interface_registry
+
+
 def get_values() -> Dict[str, Any]:
     return value_registry
 
@@ -122,6 +128,7 @@ def get_schema() -> str:
     schema = {
         "urls": get_urls_schema(),
         "templates": get_templates(),
+        "interfaces": get_interfaces(),
         "types": get_types_schema(),
         "values": get_values(),
         "rpc": rpc_registry,
@@ -141,58 +148,11 @@ class ReactivatedConfig(AppConfig):
         from .checks import check_installed_app_order  # NOQA
         from .serialization import widgets  # noqa
 
-        if (
-            os.environ.get("WERKZEUG_RUN_MAIN") == "true"
-            or os.environ.get("RUN_MAIN") == "true"
-        ):
-            # Triggers for the subprocess of the dev server after restarts or initial start.
-            pass
+        def regenerate_schema(*args: Any, **kwargs: Any) -> None:
+            schema = get_schema()
+            generate_schema(schema)
 
-        is_server_started = "DJANGO_SEVER_STARTING" in os.environ
-
-        if is_server_started is False:
-            os.environ["DJANGO_SEVER_STARTING"] = "true"
-            return
-
-        # TODO: generate this on first request, to avoid running a ton of stuff
-        # on tests. Then cache it going forward.
-        schema = get_schema()
-
-        generate_schema(schema)
-        entry_points = getattr(settings, "REACTIVATED_BUNDLES", ["index"])
-
-        client_process = subprocess.Popen(
-            [
-                "node",
-                f"{settings.BASE_DIR}/node_modules/reactivated/build.client.js",
-                *entry_points,
-            ],
-            stdout=subprocess.PIPE,
-            env={**os.environ.copy()},
-        )
-        from reactivated import renderer
-
-        renderer.renderer_process = subprocess.Popen(
-            ["node", f"{settings.BASE_DIR}/node_modules/reactivated/build.renderer.js"],
-            encoding="utf-8",
-            stdout=subprocess.PIPE,
-            env={**os.environ.copy(),},
-        )
-
-        def cleanup() -> None:
-            # Pytest has issues with this, see https://github.com/pytest-dev/pytest/issues/5502
-            # We can't use the env variable PYTEST_CURRENT_TEST because this happens
-            # after running all tests and closing the session.
-            # See: https://stackoverflow.com/questions/25188119/test-if-code-is-executed-from-within-a-py-test-session
-            if "pytest" not in sys.modules:
-                logger.info("Cleaning up client build process")
-                logger.info("Cleaning up renderer build process")
-            client_process.terminate()
-
-            if renderer.renderer_process is not None:
-                renderer.renderer_process.terminate()
-
-        atexit.register(cleanup)
+        file_changed.connect(regenerate_schema)
 
 
 def generate_schema(schema: str, skip_cache: bool = False) -> None:
@@ -208,10 +168,8 @@ def generate_schema(schema: str, skip_cache: bool = False) -> None:
 
     digest = hashlib.sha1(encoded_schema).hexdigest().encode()
 
-    if skip_cache is False and os.path.exists(
-        f"{settings.BASE_DIR}/client/generated/index.tsx"
-    ):
-        with open(f"{settings.BASE_DIR}/client/generated/index.tsx", "r+b") as existing:
+    if skip_cache is False and os.path.exists(f"{GENERATED_DIRECTORY}/index.tsx"):
+        with open(f"{GENERATED_DIRECTORY}/index.tsx", "r+b") as existing:
             already_generated = existing.read()
 
             if digest in already_generated:
@@ -241,13 +199,13 @@ def generate_schema(schema: str, skip_cache: bool = False) -> None:
     )
     constants_out, constants_error = constants_process.communicate(encoded_schema)
 
-    os.makedirs(f"{settings.BASE_DIR}/client/generated", exist_ok=True)
+    os.makedirs(GENERATED_DIRECTORY, exist_ok=True)
 
-    with open(f"{settings.BASE_DIR}/client/generated/index.tsx", "w+b") as output:
+    with open(f"{GENERATED_DIRECTORY}/index.tsx", "w+b") as output:
         output.write(b"// Digest: %s\n" % digest)
         output.write(out)
 
-    with open(f"{settings.BASE_DIR}/client/generated/constants.tsx", "w+b") as output:
+    with open(f"{GENERATED_DIRECTORY}/constants.tsx", "w+b") as output:
         output.write(constants_out)
 
     logger.info("Finished generating.")

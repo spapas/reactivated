@@ -36,7 +36,7 @@ ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
     "reactivated",
-    "django_extensions",
+    "django_extensions.apps.DjangoExtensionsConfig",
     "sample.server.apps.samples",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -127,8 +127,6 @@ TIME_ZONE = "UTC"
 
 USE_I18N = True
 
-USE_L10N = True
-
 USE_TZ = True
 
 
@@ -144,3 +142,5 @@ DEBUG_PORT = int(os.environ.get("DEBUG_PORT", 8000))
 RUNSERVERPLUS_SERVER_ADDRESS_PORT = f"0.0.0.0:{DEBUG_PORT}"
 
 REACTIVATED_SERVER = f"http://0.0.0.0:{DEBUG_PORT + 200}"
+
+DEFAULT_AUTO_FIELD = "django.db.models.AutoField"

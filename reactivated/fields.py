@@ -22,7 +22,7 @@ from django.db.models.fields import BLANK_CHOICE_DASH, NOT_PROVIDED
 from .constraints import EnumConstraint
 
 if TYPE_CHECKING:
-    from django.db.models.fields import _ValidatorCallable, _ErrorMessagesToOverride
+    from django.db.models.fields import _ErrorMessagesToOverride, _ValidatorCallable
 else:
 
     class _ValidatorCallable:
@@ -68,7 +68,7 @@ def convert_enum_to_choices(
 
 
 class EnumChoiceIterator(Generic[_GT]):
-    """ This is a special iterator that preserves the original enum. Useful so
+    """This is a special iterator that preserves the original enum. Useful so
     we can use the "choices" argument that triggers special Django behaviors,
     but leave our enum intact for reference."""
 
@@ -139,6 +139,7 @@ class _EnumField(models.CharField[_ST, _GT]):  # , Generic[_ST, _GT]):
 
         self.enum = enum
         self.choices = EnumChoiceIterator(enum=enum)
+        self.db_collation = None
 
         # We skip the constructor for CharField because we do *not* want
         # MaxLengthValidator added, as our enum members do not support __len__.
@@ -285,7 +286,6 @@ if TYPE_CHECKING:
         error_messages: Optional[_ErrorMessagesToOverride] = None,
     ) -> Union[_EnumField[TEnum, TEnum], _EnumField[Optional[TEnum], Optional[TEnum]]]:  # type: ignore[type-var]
         return _EnumField[TEnum, TEnum](enum=enum, default=default, null=null)
-
 
 else:
 

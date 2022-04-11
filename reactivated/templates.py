@@ -10,6 +10,7 @@ from .serialization import create_schema, serialize
 from .serialization.registry import (
     JSON,
     definitions_registry,
+    interface_registry,
     template_registry,
     type_registry,
 )
@@ -30,7 +31,11 @@ class LazySerializationResponse(TemplateResponse):
     _request: HttpRequest
 
     def __init__(
-        self, request: HttpRequest, template: Type[T], *args: Any, **kwargs: Any,
+        self,
+        request: HttpRequest,
+        template: Type[T],
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         self.template = template
         super().__init__(request, *args, **kwargs)
@@ -64,10 +69,13 @@ class LazySerializationResponse(TemplateResponse):
 
 def template(cls: Type[T]) -> Type[T]:
     type_name = f"{cls.__name__}Props"
-    type_registry[type_name] = cls  # type: ignore[assignment]
-    template_registry[cls.__name__] = type_name  # type: ignore[assignment]
 
     class Augmented(cls):  # type: ignore[misc, valid-type]
+        @staticmethod
+        def register() -> None:
+            type_registry[type_name] = cls  # type: ignore[assignment]
+            template_registry[cls.__name__] = type_name  # type: ignore[assignment]
+
         def items(self) -> Any:
             """
             Duck-typing for context, so you can loop over a template.
@@ -82,10 +90,14 @@ def template(cls: Type[T]) -> Type[T]:
 
         def render(self, request: HttpRequest) -> TemplateResponse:
             response = LazySerializationResponse(  # type
-                request, cls, f"{self.__class__.__name__}.tsx", self,
+                request,
+                cls,
+                f"{self.__class__.__name__}.tsx",
+                self,
             )
             return response
 
+    Augmented.register()
     Augmented.__name__ = cls.__name__
     return Augmented
 
@@ -129,12 +141,16 @@ def extract_forms_form_sets_and_actions(interface: Any) -> Extracted:
     )
 
 
-def interface(cls: T) -> T:
-    type_name = f"{cls.__name__}Props"  # type: ignore[attr-defined]
-    type_registry[type_name] = cls  # type: ignore[assignment]
+def interface(cls: Type[T]) -> Type[T]:
+    type_name = f"{cls.__name__}Props"
 
     class Augmented(cls):  # type: ignore[misc, valid-type]
         is_reactivated_interface = True
+
+        @staticmethod
+        def register() -> None:
+            type_registry[type_name] = cls  # type: ignore[assignment]
+            interface_registry[cls.__name__] = type_name  # type: ignore[assignment]
 
         def get_serialized(self) -> Any:
             generated_schema = create_schema(cls, definitions_registry)
@@ -165,5 +181,6 @@ def interface(cls: T) -> T:
         def as_json(self, request: HttpRequest) -> JsonResponse:
             return JsonResponse(self.get_serialized())
 
-    Augmented.__name__ = cls.__name__  # type: ignore[attr-defined]
-    return Augmented  # type: ignore[return-value]
+    Augmented.register()
+    Augmented.__name__ = cls.__name__
+    return Augmented

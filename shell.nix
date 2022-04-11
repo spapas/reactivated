@@ -1,8 +1,8 @@
 let
-  stableTarball = fetchTarball
-    "https://github.com/NixOS/nixpkgs/archive/f112b512e1710da6c8beb8e541a8ad9fcd81e6e6.tar.gz";
-  unstableTarball = fetchTarball
-    "https://github.com/NixOS/nixpkgs/archive/f112b512e1710da6c8beb8e541a8ad9fcd81e6e6.tar.gz";
+  stableTarball =
+    fetchTarball "https://github.com/NixOS/nixpkgs/archive/8ca77a63599e.tar.gz";
+  unstableTarball =
+    fetchTarball "https://github.com/NixOS/nixpkgs/archive/9bc841fec1c0.tar.gz";
   pkgs = import stableTarball { };
   unstable = import unstableTarball { };
 in with pkgs;
@@ -14,8 +14,8 @@ mkShell {
 
     python39
     python39Packages.virtualenv
-    nodejs-14_x
-    (yarn.override { nodejs = nodejs-14_x; })
+    nodejs-16_x
+    (yarn.override { nodejs = nodejs-16_x; })
 
     tmuxp
 

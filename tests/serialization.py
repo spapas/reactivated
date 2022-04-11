@@ -202,7 +202,9 @@ def test_serialization():
             "name": "Götterdämmerung",
             "get_birthplace_of_composer": "Germany",
         },
-        "pick_property": {"did_live_in_more_than_one_country": True,},
+        "pick_property": {
+            "did_live_in_more_than_one_country": True,
+        },
         "pick_literal": {"name": composer.name, "operas": [{"name": opera.name}]},
         "pick_computed_foreign_key": {"main_opera": {"name": opera.name}},
         "pick_computed_null_foreign_key": {"favorite_opera": {"name": opera.name}},
@@ -416,6 +418,12 @@ def test_deferred_evaluation_of_types(settings):
     }
 
 
+def test_pick_reverse_relationship():
+    with pytest.raises(AssertionError, match="reverse relationships"):
+        assert create_schema(Pick[models.Composer, "operas"], {})
+    assert create_schema(Pick[models.Composer, "operas.name"], {})
+
+
 def test_form_and_fields():
     date = datetime.date(2015, 1, 1)
     Form = forms.StoryboardForm
@@ -426,7 +434,7 @@ def test_form_and_fields():
     serialized = serialize(instance, schema)
 
     assert serialized["fields"]["char_field"] == {
-        "help_text": "",
+        "help_text": None,
         "label": "Char field",
         "name": "char_field",
         "widget": {
@@ -450,7 +458,7 @@ def test_form_and_fields():
     convert_to_json_and_validate(serialized["fields"]["char_field"], field_schema)
 
     assert serialized["fields"]["integer_field"] == {
-        "help_text": "",
+        "help_text": None,
         "label": "Integer field",
         "name": "integer_field",
         "widget": {
@@ -474,7 +482,7 @@ def test_form_and_fields():
     convert_to_json_and_validate(serialized["fields"]["integer_field"], field_schema)
 
     assert serialized["fields"]["date_field"] == {
-        "help_text": "",
+        "help_text": None,
         "label": "Date field",
         "name": "date_field",
         "widget": {
@@ -1086,7 +1094,7 @@ def test_form_and_fields():
     convert_to_json_and_validate(serialized["fields"]["date_field"], field_schema)
 
     assert serialized["fields"]["date_time_field"] == {
-        "help_text": "",
+        "help_text": None,
         "label": "Date time field",
         "name": "date_time_field",
         "widget": {
@@ -1146,7 +1154,7 @@ def test_form_and_fields():
     assert serialized["fields"]["boolean_field"] == {
         "name": "boolean_field",
         "label": "Boolean field",
-        "help_text": "",
+        "help_text": "Not blank",
         "widget": {
             "template_name": "django/forms/widgets/checkbox.html",
             "name": "boolean_field",
