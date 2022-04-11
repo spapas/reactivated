@@ -13,10 +13,11 @@ import {
     VariableDeclarationKind,
     WriterFunction,
     Writers,
+    Scope,
 } from "ts-morph";
 
 const schema = JSON.parse(stdinBuffer.toString("utf8"));
-const {urls, templates, types, values} = schema;
+const {urls, templates, types, values, rpc} = schema;
 
 const project = new Project();
 
@@ -46,6 +47,35 @@ urlMap.setIsExported(true);
 
 const withArguments = [];
 const withoutArguments = [];
+
+const classDeclaration = interfaces.addClass({
+  name: "RPC",
+  isExported: true,
+});
+
+classDeclaration.addConstructor({
+    parameters: [
+        {name: "fetcher", type: "typeof fetch", scope: Scope.Private},
+    ],
+})
+
+for (const name of Object.keys(rpc)) {
+    const [rpcURL, inputName, outputName] = rpc[name];
+    /*
+    const rpcInput = interfaces.addInterface({
+        name: `${rpc[name]}`,
+        properties: [],
+    });
+    */
+    const functionDeclaration = classDeclaration.addMethod({
+        name,
+    })
+    
+    functionDeclaration.addParameter({name: "input", type: `forms.FormValues<Types["${inputName}"]["fields"]>`});
+    functionDeclaration.setReturnType(`Promise<rpcUtils.Result<Types["${outputName}"], NonNullable<Types["${inputName}"]["errors"]>>>`);
+    functionDeclaration.setBodyText(`return rpcUtils.rpcCall("${rpcURL}", input)`);
+    functionDeclaration.setIsAsync(true);
+}
 
 for (const name of Object.keys(urls)) {
     const properties = urls[name as keyof typeof urls].args;
@@ -85,6 +115,7 @@ interfaces.addTypeAlias({name: "WithArguments", type: withArguments.join("|")});
 interfaces.addTypeAlias({name: "WithoutArguments", type: withoutArguments.join("|")});
 interfaces.addStatements(`
 
+export const rpc = new RPC(typeof window != "undefined" ? fetch : null as any);
 type All = WithArguments|WithoutArguments;
 export function reverse<T extends WithoutArguments['name']>(name: T): string;
 export function reverse<T extends WithArguments['name']>(name: T, args: Extract<WithArguments, {name: T}>['args']): string;
@@ -103,6 +134,7 @@ interfaces.addStatements(`
 import React from "react"
 import createContext from "reactivated/context";
 import * as forms from "reactivated/forms";
+import * as rpcUtils from "reactivated/rpc";
 
 // Note: this needs strict function types to behave correctly with excess properties etc.
 export type Checker<P, U extends (React.FunctionComponent<P> | React.ComponentClass<P>)> = {};
