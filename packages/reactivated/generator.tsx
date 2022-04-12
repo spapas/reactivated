@@ -38,7 +38,7 @@ const project = new Project();
 
 const sourceFile = project.createSourceFile("");
 
-const classDeclaration = interfaces.addClass({
+const classDeclaration = sourceFile.addClass({
    name: "RPC",
    isExported: true,
  });
@@ -51,18 +51,12 @@ const classDeclaration = interfaces.addClass({
 
  for (const name of Object.keys(rpc)) {
      const [rpcURL, inputName, outputName] = rpc[name];
-     /*
-     const rpcInput = interfaces.addInterface({
-         name: `${rpc[name]}`,
-         properties: [],
-     });
-     */
      const functionDeclaration = classDeclaration.addMethod({
          name,
      })
 
-     functionDeclaration.addParameter({name: "input", type: `forms.FormValues<Types["${inputName}"]["fields"]>`});
-     functionDeclaration.setReturnType(`Promise<rpcUtils.Result<Types["${outputName}"], NonNullable<Types["${inputName}"]["errors"]>>>`);
+     functionDeclaration.addParameter({name: "input", type: `forms.FormValues<_Types["${inputName}"]["fields"]>`});
+     functionDeclaration.setReturnType(`Promise<rpcUtils.Result<_Types["${outputName}"], NonNullable<_Types["${inputName}"]["errors"]>>>`);
      functionDeclaration.setBodyText(`return rpcUtils.rpcCall("${rpcURL}", input)`);
      functionDeclaration.setIsAsync(true);
  }

@@ -39,12 +39,15 @@ original_restart_with_reloader = autoreload.restart_with_reloader
 
 
 def patched_restart_with_reloader() -> None:
+    from server.react_drf.generator import writeExports
+
     from . import processes
     from .apps import generate_schema, get_schema
 
     schema = get_schema()
     generate_schema(schema)
-    processes.start_tsc()
+    writeExports()
+    # processes.start_tsc()
     processes.start_client()
     processes.start_renderer()
     original_restart_with_reloader()

@@ -251,6 +251,9 @@ def extract_widget_context(field: django_forms.BoundField) -> Dict[str, Any]:
     return context  # type: ignore[no-any-return]
 
 
+from django.core.exceptions import NON_FIELD_ERRORS
+
+
 @register(django_forms.BaseForm)
 class FormType(NamedTuple):
     name: str
@@ -276,7 +279,9 @@ class FormType(NamedTuple):
 
         required = []
         properties = {}
-        error_properties = {}
+        error_properties = {
+            NON_FIELD_ERRORS: error_definition,
+        }
 
         for field_name, SubType in Type.base_fields.items():  # type: ignore[attr-defined]
             required.append(field_name)
