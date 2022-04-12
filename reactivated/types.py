@@ -1,4 +1,4 @@
-from typing import Dict, NamedTuple, Tuple, TypedDict, Union, Optional
+from typing import Dict, NamedTuple, Tuple, TypedDict, Union, Optional, Literal
 
 from django import forms
 
@@ -45,6 +45,7 @@ class RPCMember(TypedDict):
     url: str
     input: str
     output: str
+    type: Literal["form", "form_set"]
 
 
 RPCSchema = Dict[str, RPCMember]

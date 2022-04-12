@@ -52,17 +52,17 @@ const classDeclaration = sourceFile.addClass({
  })
 
  for (const name of Object.keys(rpc)) {
-     const {url, input, output, instance} = rpc[name];
+     const {url, input, output, type, instance} = rpc[name];
      const functionDeclaration = classDeclaration.addMethod({
          name,
      })
 
      if (instance != null) {
         functionDeclaration.addParameter({name: "instance", type: `string | number`});
-        functionDeclaration.setBodyText(`return rpcUtils.rpcCall("${url}", input, instance)`);
+        functionDeclaration.setBodyText(`return rpcUtils.rpcCall("${url}", input, "${type}", instance)`);
      }
      else {
-        functionDeclaration.setBodyText(`return rpcUtils.rpcCall("${url}", input)`);
+        functionDeclaration.setBodyText(`return rpcUtils.rpcCall("${url}", input, "${type}")`);
      }
 
      functionDeclaration.addParameter({name: "input", type: `forms.FormOrFormSetValues<_Types["${input}"]>`});
