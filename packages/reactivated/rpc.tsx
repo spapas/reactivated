@@ -20,7 +20,18 @@ export function getCookieFromCookieString(name: string, cookieString: string) {
 
 export async function rpcCall(url: string, input: Record<string, any>, type: "form" | "form_set", instance?: string | number): Promise<Result<any, any>> {
     const formData = new FormData();
-    Object.keys(input).forEach(key => formData.append(key, input[key as keyof typeof input] ?? ""));
+
+    if (type === "form_set") {
+        formData.append("form_set-INITIAL_FORMS", input.length);
+        formData.append("form_set-TOTAL_FORMS", input.length);
+        for (const index in (input as Array<any>)) {
+            const formSetForm = input[index];
+            Object.keys(formSetForm).forEach((key) => formData.append(`form_set-${index}-${key}`, formSetForm[key]));
+        }
+    }
+    else {
+        Object.keys(input).forEach(key => formData.append(key, input[key as keyof typeof input] ?? ""));
+    }
 
     const urlWithPossibleInstance = instance != null ? `${url}${instance}/` : url;
 
