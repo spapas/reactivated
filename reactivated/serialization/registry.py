@@ -10,7 +10,7 @@ from typing import (
     TypeVar,
 )
 
-from reactivated import utils
+from reactivated import utils, types
 
 DefaultWidgetType = {"tsType": 'generated.Types["Widget"]'}
 
@@ -21,7 +21,7 @@ template_registry: Dict[str, Tuple[Any]] = {}
 interface_registry: Dict[str, Tuple[Any]] = {}
 value_registry: Dict[str, Any] = {}
 definitions_registry: Dict[Any, Any] = {}
-rpc_registry: Dict[str, Any] = {}
+rpc_registry: types.RPCSchema = {}
 
 PROXIES = utils.ClassLookupDict({})
 

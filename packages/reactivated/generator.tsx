@@ -18,7 +18,9 @@ import {
 } from "ts-morph";
 
 const schema = JSON.parse(stdinBuffer.toString("utf8"));
-const {urls: possibleEmptyUrls, templates, interfaces, types, rpc, values} = schema;
+const {urls: possibleEmptyUrls, templates, interfaces, types, rpc: untypedRpc, values} = schema;
+
+const rpc: generated.Types["RPCSchema"] = untypedRpc;
 
 const urls: generated.Types["URLSchema"] = {
     ...possibleEmptyUrls,
@@ -50,14 +52,21 @@ const classDeclaration = sourceFile.addClass({
  })
 
  for (const name of Object.keys(rpc)) {
-     const [rpcURL, inputName, outputName] = rpc[name];
+     const {url, input, output, instance} = rpc[name];
      const functionDeclaration = classDeclaration.addMethod({
          name,
      })
 
-     functionDeclaration.addParameter({name: "input", type: `forms.FormValues<_Types["${inputName}"]["fields"]>`});
-     functionDeclaration.setReturnType(`Promise<rpcUtils.Result<_Types["${outputName}"], NonNullable<_Types["${inputName}"]["errors"]>>>`);
-     functionDeclaration.setBodyText(`return rpcUtils.rpcCall("${rpcURL}", input)`);
+     if (instance != null) {
+        functionDeclaration.addParameter({name: "instance", type: `string | number`});
+        functionDeclaration.setBodyText(`return rpcUtils.rpcCall("${url}", input, instance)`);
+     }
+     else {
+        functionDeclaration.setBodyText(`return rpcUtils.rpcCall("${url}", input)`);
+     }
+
+     functionDeclaration.addParameter({name: "input", type: `forms.FormOrFormSetValues<_Types["${input}"]>`});
+     functionDeclaration.setReturnType(`Promise<rpcUtils.Result<_Types["${output}"], forms.FormOrFormSetErrors<_Types["${input}"]>>>`);
      functionDeclaration.setIsAsync(true);
  }
 

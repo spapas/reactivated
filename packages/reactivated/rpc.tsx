@@ -18,12 +18,14 @@ export function getCookieFromCookieString(name: string, cookieString: string) {
     return cookieValue;
 }
 
-export async function rpcCall(url: string, input: Record<string, any>): Promise<Result<any, any>> {
+export async function rpcCall(url: string, input: Record<string, any>, instance?: string | number): Promise<Result<any, any>> {
     const formData = new FormData();
     Object.keys(input).forEach(key => formData.append(key, input[key as keyof typeof input] ?? ""));
 
+    const urlWithPossibleInstance = instance != null ? `${url}${instance}/` : url;
+
     try {
-        const response = await fetch(url, {
+        const response = await fetch(urlWithPossibleInstance, {
             method: "POST",
             body: formData,
             headers: {
