@@ -57,9 +57,18 @@ const classDeclaration = sourceFile.addClass({
          name,
      })
 
-     if (instance != null) {
+     if (instance.length === 1) {
         functionDeclaration.addParameter({name: "instance", type: `string | number`});
         functionDeclaration.setBodyText(`return rpcUtils.rpcCall("${url}", input, "${type}", instance)`);
+     }
+     else if (instance.length >= 2) {
+        const instanceInterface = functionDeclaration.addInterface({name: "WILL_BE_STRIPPED"});
+
+        for (const instanceArg of instance) {
+            instanceInterface.addProperty({name: instanceArg, type: "string | number"});
+        }
+        functionDeclaration.addParameter({name: "instance", type: instanceInterface.getText().replace("interface WILL_BE_STRIPPED", "")});
+        functionDeclaration.setBodyText(`const iterator = ${JSON.stringify(instance)}; return rpcUtils.rpcCall("${url}", input, "${type}", {iterator, params: instance})`);
      }
      else {
         functionDeclaration.setBodyText(`return rpcUtils.rpcCall("${url}", input, "${type}")`);
@@ -129,7 +138,6 @@ if (Object.keys(urls).length !== 0) {
         type: withoutArguments.join("|"),
     });
     sourceFile.addStatements(`
-    export const rpc = new RPC(typeof window != "undefined" ? fetch : null as any);
     type All = WithArguments|WithoutArguments;
     export function reverse<T extends WithoutArguments['name']>(name: T): string;
     export function reverse<T extends WithArguments['name']>(name: T, args: Extract<WithArguments, {name: T}>['args']): string;
@@ -146,6 +154,7 @@ if (Object.keys(urls).length !== 0) {
 }
 
 sourceFile.addStatements(`
+export const rpc = new RPC(typeof window != "undefined" ? fetch : null as any);
 import React from "react"
 import createContext from "reactivated/context";
 import * as forms from "reactivated/forms";

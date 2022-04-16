@@ -18,7 +18,28 @@ export function getCookieFromCookieString(name: string, cookieString: string) {
     return cookieValue;
 }
 
-export async function rpcCall(url: string, input: Record<string, any>, type: "form" | "form_set", instance?: string | number): Promise<Result<any, any>> {
+type InstanceKey = string | number | {iterator: string[], params: Record<string, string | number>};
+
+function buildUrl(baseUrl: string, instance?: InstanceKey) {
+    if (instance == null ) {
+        return baseUrl;
+    }
+    else if (typeof instance === "number" || typeof instance === "string") {
+        return `${baseUrl}${instance}/`;
+
+    }
+    else {
+        const params = []
+
+        for (const key of instance.iterator) {
+            params.push(instance.params[key])
+        }
+
+        return `${baseUrl}${params.join("-")}/`;
+    }
+}
+
+export async function rpcCall(url: string, input: Record<string, any>, type: "form" | "form_set", instance?: InstanceKey): Promise<Result<any, any>> {
     const formData = new FormData();
 
     if (type === "form_set") {
@@ -33,7 +54,7 @@ export async function rpcCall(url: string, input: Record<string, any>, type: "fo
         Object.keys(input).forEach(key => formData.append(key, input[key as keyof typeof input] ?? ""));
     }
 
-    const urlWithPossibleInstance = instance != null ? `${url}${instance}/` : url;
+    const urlWithPossibleInstance = buildUrl(url, instance);
 
     try {
         const response = await fetch(urlWithPossibleInstance, {

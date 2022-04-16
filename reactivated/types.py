@@ -1,4 +1,4 @@
-from typing import Dict, NamedTuple, Tuple, TypedDict, Union, Optional, Literal
+from typing import Dict, NamedTuple, Tuple, TypedDict, Union, Optional, Literal, List
 
 from django import forms
 
@@ -41,7 +41,7 @@ URLSchema = Dict[str, URL]
 
 
 class RPCMember(TypedDict):
-    instance: Optional[str]
+    instance: List[str]
     url: str
     input: str
     output: str

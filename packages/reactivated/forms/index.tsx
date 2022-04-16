@@ -67,6 +67,10 @@ export type FormValues<T extends FieldMap> = {
         : T[K]["widget"]["value"];
 };
 
+export type UnknownFormValues<T extends FieldMap> = {
+    [K in keyof T]: unknown
+};
+
 export interface FormHandler<T extends FieldMap> {
     form: FormLike<T>;
     values: FormValues<T>;
@@ -769,6 +773,6 @@ export const FormSet = <T extends FieldMap<widgets.CoreWidget>>(props: {
 };
 
 
-export type FormOrFormSetValues<T> = T extends FormLike<any> ? FormValues<T["fields"]> : T extends FormSetLike<any> ? Array<FormValues<T["empty_form"]["fields"]>> : never;
+export type FormOrFormSetValues<T> = T extends FormLike<any> ? UnknownFormValues<T["fields"]> : T extends FormSetLike<any> ? Array<UnknownFormValues<T["empty_form"]["fields"]>> : never;
 
 export type FormOrFormSetErrors<T> = T extends FormLike<any> ? NonNullable<T["errors"]> : T extends FormSetLike<any> ? Array<NonNullable<T["empty_form"]["errors"]>> : never;
