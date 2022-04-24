@@ -45,8 +45,8 @@ def patched_restart_with_reloader() -> None:
     from .apps import generate_schema, get_schema
 
     schema = get_schema()
-    generate_schema(schema)
-    writeExports()
+    # generate_schema(schema)
+    # writeExports()
     # processes.start_tsc()
     processes.start_client()
     processes.start_renderer()

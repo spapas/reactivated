@@ -152,7 +152,7 @@ class ReactivatedConfig(AppConfig):
             schema = get_schema()
             generate_schema(schema)
 
-        file_changed.connect(regenerate_schema)
+        # file_changed.connect(regenerate_schema)
 
 
 def generate_schema(schema: str, skip_cache: bool = False) -> None:

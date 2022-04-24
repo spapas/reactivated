@@ -779,7 +779,9 @@ def create_schema(Type: Any, definitions: Definitions) -> Thing:
     except KeyError:
         pass
 
-    if isinstance(Type, stubs._GenericAlias):
+    if Type is None:
+        return Thing(schema={"type": "null"}, definitions={})
+    elif isinstance(Type, stubs._GenericAlias):
         return generic_alias_schema(Type, definitions)
     elif isinstance(Type, models.Field):
         return field_descriptor_schema(Type, definitions)
