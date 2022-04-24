@@ -56,6 +56,7 @@ class ReactivatedPlugin(Plugin):
         if fullname in [
             "django.forms.formsets.formset_factory",
             "django.forms.models.modelformset_factory",
+            "django.forms.models.inlineformset_factory",
         ]:
             return analyze_formset_factory
         return None
@@ -75,12 +76,18 @@ def analyze_stubs(ctx: ClassDefContext) -> None:
 already_analyzed = {}
 
 
+def get_formset_class(ctx: DynamicClassDefContext) -> str:
+    if ctx.call.callee.name == "modelformset_factory":  # type: ignore[attr-defined]
+        return "reactivated.stubs.BaseModelFormSet"
+    elif ctx.call.callee.name == "inlineformset_factory":  # type: ignore[attr-defined]
+        return "django.forms.models.BaseInlineFormSet"
+    else:
+        return "reactivated.stubs.BaseFormSet"
+
+
 def analyze_formset_factory(ctx: DynamicClassDefContext) -> None:
-    class_lookup = (
-        "reactivated.stubs.BaseModelFormSet"
-        if ctx.call.callee.name == "modelformset_factory"  # type: ignore[attr-defined]
-        else "reactivated.stubs.BaseFormSet"
-    )
+    class_lookup = get_formset_class(ctx)
+
     form_set_class = ctx.api.lookup_fully_qualified_or_none(
         class_lookup,
     )
