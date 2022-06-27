@@ -30,13 +30,15 @@ class Command(BaseCommand):
             **os.environ.copy(),
             "NODE_ENV": "production",
         }
-
+        print(1)
+        tsc = "tsc.cmd" if os.name == 'nt' else "tsc"
         tsc_process = subprocess.Popen(
-            [f"{settings.BASE_DIR}/node_modules/.bin/tsc", "--noEmit"],
+            [f"{settings.BASE_DIR}/node_modules/.bin/{tsc}", "--noEmit"],
             stdout=subprocess.PIPE,
             env=build_env,
             cwd=settings.BASE_DIR,
         )
+        print(2)
         client_process = subprocess.Popen(
             [
                 "node",
@@ -47,6 +49,7 @@ class Command(BaseCommand):
             env=build_env,
             cwd=settings.BASE_DIR,
         )
+        print(3)
         renderer_process = subprocess.Popen(
             ["node", f"{settings.BASE_DIR}/node_modules/reactivated/build.renderer.js"],
             stdout=subprocess.PIPE,
